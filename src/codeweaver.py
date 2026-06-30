@@ -240,8 +240,8 @@ class CodeWeaverEngine:
 
 # ============================================================
 # Локализация
-# ============================================================
 
+# ============================================================
 class Translator:
     def __init__(self):
         self.language = 'en'
@@ -260,28 +260,35 @@ class Translator:
         if getattr(sys, 'frozen', False):
             # Запуск из .exe
             base_dir = Path(sys.executable).parent
+
+            # Проверяем разные варианты путей
             possible_paths.append(base_dir / 'locales')
             possible_paths.append(base_dir / 'resources' / 'locales')
+            possible_paths.append(base_dir / 'src' / 'resources' / 'locales')
 
             # PyInstaller создает _MEIPASS для временных файлов
             if hasattr(sys, '_MEIPASS'):
                 meipass = Path(sys._MEIPASS)
                 possible_paths.append(meipass / 'locales')
                 possible_paths.append(meipass / 'resources' / 'locales')
+                possible_paths.append(meipass / 'src' / 'resources' / 'locales')
 
         # Ищем существующую папку
         locales_dir = None
         for path in possible_paths:
-            if path.exists():
+            if path.exists() and path.is_dir():
                 locales_dir = path
                 break
 
         if not locales_dir:
-            print(f"Warning: Locales directory not found. Searched in: {possible_paths}")
+            print(f"Warning: Locales directory not found. Searched in:")
+            for path in possible_paths:
+                print(f"  - {path}")
             return
 
         print(f"Loading locales from: {locales_dir}")
 
+        # Загружаем все JSON файлы
         for lang_file in locales_dir.glob('*.json'):
             try:
                 with open(lang_file, 'r', encoding='utf-8') as f:
@@ -290,6 +297,47 @@ class Translator:
                     print(f"Loaded locale: {lang_file.stem}")
             except Exception as e:
                 print(f"Error loading {lang_file}: {e}")
+
+        # Если нет переводов, добавляем дефолтные
+        if not self.translations:
+            print("Warning: No translations loaded, using defaults")
+            self.translations['en'] = {
+                "subtitle": "Documentation Generator",
+                "paths": "Paths",
+                "input": "Source Code",
+                "output": "Save to",
+                "filename": "Filename",
+                "select_folder": "Select code folder...",
+                "ignore": "Ignore Patterns",
+                "templates": "Quick templates:",
+                "generate": "Generate",
+                "copy": "Copy",
+                "open": "Open",
+                "ready": "Ready",
+                "settings": "Settings",
+                "language": "Language",
+                "theme": "Theme",
+                "dark": "Dark",
+                "light": "Light",
+                "apply": "Apply",
+                "cancel": "Cancel",
+                "error": "Error",
+                "input_error": "Please specify input folder",
+                "output_error": "Please specify output folder",
+                "folder_not_found": "Folder not found",
+                "generating": "Generating...",
+                "success": "Success",
+                "saved": "Documentation saved",
+                "info": "Info",
+                "generate_first": "Please generate first",
+                "file_not_found": "File not found",
+                "copied": "Copied",
+                "chars": "chars",
+                "copied_to_clipboard": "Copied to clipboard!",
+                "size": "Size",
+                "copy_failed": "Failed to copy",
+                "template_added": "Template added"
+            }
 
     def set_language(self, lang):
         if lang in self.translations:
@@ -304,7 +352,6 @@ class Translator:
         if default is not None:
             return default
         return key
-
 
 # Глобальный экземпляр
 translator = Translator()
