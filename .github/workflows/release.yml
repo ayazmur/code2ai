@@ -7,19 +7,17 @@ on:
       - 'v*'
 
 jobs:
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  build:
+    name: Build Release
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Build Windows
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.10'
 
     - name: Install dependencies
       run: |
@@ -27,17 +25,16 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: Build all platforms
-      run: |
-        python build/build.py --all-platforms
+    - name: Build Windows executable
+      run: python build/build.py
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          dist/CodeWeaver-Windows.exe
-          dist/CodeWeaver-Linux
-          dist/CodeWeaver-macOS.app
+          dist/CodeWeaver.exe
         draft: false
         prerelease: false
         generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

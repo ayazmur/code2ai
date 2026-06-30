@@ -249,13 +249,45 @@ class Translator:
         self.load_translations()
 
     def load_translations(self):
-        locales_dir = Path(__file__).parent / 'locales'
+        # Пытаемся найти папку locales в разных местах
+        possible_paths = []
+
+        # 1. В режиме разработки
+        possible_paths.append(Path(__file__).parent / 'resources' / 'locales')
+        possible_paths.append(Path(__file__).parent / 'locales')
+
+        # 2. В собранном приложении (PyInstaller)
+        if getattr(sys, 'frozen', False):
+            # Запуск из .exe
+            base_dir = Path(sys.executable).parent
+            possible_paths.append(base_dir / 'locales')
+            possible_paths.append(base_dir / 'resources' / 'locales')
+
+            # PyInstaller создает _MEIPASS для временных файлов
+            if hasattr(sys, '_MEIPASS'):
+                meipass = Path(sys._MEIPASS)
+                possible_paths.append(meipass / 'locales')
+                possible_paths.append(meipass / 'resources' / 'locales')
+
+        # Ищем существующую папку
+        locales_dir = None
+        for path in possible_paths:
+            if path.exists():
+                locales_dir = path
+                break
+
+        if not locales_dir:
+            print(f"Warning: Locales directory not found. Searched in: {possible_paths}")
+            return
+
+        print(f"Loading locales from: {locales_dir}")
 
         for lang_file in locales_dir.glob('*.json'):
             try:
                 with open(lang_file, 'r', encoding='utf-8') as f:
                     lang_data = json.load(f)
                     self.translations[lang_file.stem] = lang_data
+                    print(f"Loaded locale: {lang_file.stem}")
             except Exception as e:
                 print(f"Error loading {lang_file}: {e}")
 
