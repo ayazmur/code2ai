@@ -122,38 +122,63 @@ def build():
         print(f"Error: dist folder not found at {dist_path}")
         sys.exit(1)
 
-    # Ищем собранный файл
-    source = None
-    if is_windows:
-        source = dist_path / 'CodeWeaver.exe'
-    elif is_mac:
-        source = dist_path / 'CodeWeaver.app'
-    else:
-        source = dist_path / 'CodeWeaver'
+    # PyInstaller всегда создает файл в корне dist с именем, указанным в --name
+    pyinstaller_output = dist_path / 'CodeWeaver.exe' if is_windows else dist_path / 'CodeWeaver'
 
-    if not source or not source.exists():
-        print(f"Error: Build output not found at {source}")
+    # На случай если PyInstaller создал с другим расширением
+    if is_windows and not pyinstaller_output.exists():
+        # Проверяем возможные варианты
+        possible_names = ['CodeWeaver.exe', 'CodeWeaver']
+        for name in possible_names:
+            test_path = dist_path / name
+            if test_path.exists():
+                pyinstaller_output = test_path
+                break
+
+    if not pyinstaller_output.exists():
+        print(f"Error: Build output not found")
         print("Contents of dist folder:")
         for item in dist_path.iterdir():
             print(f"  - {item.name}")
         sys.exit(1)
 
-    # Копируем в целевое место
-    dest = dist / exe_name
-    if dest.exists():
-        if dest.is_dir():
-            shutil.rmtree(dest)
+    # Целевой файл уже должен быть в правильном месте, но на всякий случай проверяем
+    final_path = dist / exe_name
+
+    # Если файл уже в нужном месте и имеет правильное имя
+    if pyinstaller_output == final_path:
+        print(f"Build complete: {final_path}")
+        if final_path.exists():
+            print(f"File size: {final_path.stat().st_size / 1024 / 1024:.2f} MB")
+        return
+
+    # Если файл в другом месте - копируем/перемещаем
+    if pyinstaller_output != final_path:
+        print(f"Moving {pyinstaller_output} to {final_path}")
+
+        # Удаляем существующий файл если есть
+        if final_path.exists():
+            if final_path.is_dir():
+                shutil.rmtree(final_path)
+            else:
+                final_path.unlink()
+
+        # Копируем или перемещаем
+        if pyinstaller_output.is_dir():
+            shutil.copytree(pyinstaller_output, final_path)
         else:
-            dest.unlink()
+            shutil.copy2(pyinstaller_output, final_path)
 
-    # Используем copy вместо move для надежности
-    if dest.is_dir():
-        shutil.copytree(source, dest)
-    else:
-        shutil.copy2(source, dest)
+        # Удаляем исходный файл если это не тот же файл
+        if pyinstaller_output != final_path and pyinstaller_output.exists():
+            if pyinstaller_output.is_dir():
+                shutil.rmtree(pyinstaller_output)
+            else:
+                pyinstaller_output.unlink()
 
-    print(f"Build complete: {dest}")
-    print(f"File size: {dest.stat().st_size / 1024 / 1024:.2f} MB")
+    print(f"Build complete: {final_path}")
+    if final_path.exists():
+        print(f"File size: {final_path.stat().st_size / 1024 / 1024:.2f} MB")
 
 
 if __name__ == '__main__':
