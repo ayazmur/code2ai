@@ -1,0 +1,43 @@
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Windows
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build all platforms
+      run: |
+        python build/build.py --all-platforms
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/CodeWeaver-Windows.exe
+          dist/CodeWeaver-Linux
+          dist/CodeWeaver-macOS.app
+        draft: false
+        prerelease: false
+        generate_release_notes: true
